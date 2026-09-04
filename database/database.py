@@ -1,5 +1,7 @@
 #(©)CodeXBotz
 
+from datetime import datetime, timedelta
+
 import pymongo
 from config import (
     DB_URI,
@@ -17,6 +19,7 @@ database = dbclient[DB_NAME]
 
 user_data = database['users']
 force_sub_data = database['force_sub_settings']
+pending_join_data = database['pending_join_requests']
 
 
 async def present_user(user_id: int):
@@ -49,8 +52,6 @@ async def get_force_subscriptions():
         saved = force_sub_data.find_one({'_id': default['slot']})
         channel_changed = saved is not None and saved.get('channel_id') != default['channel_id']
         if saved is None or channel_changed:
-            # A newly configured channel must use its environment on/off setting,
-            # not the old channel's saved state or old invite link.
             force_sub_data.update_one(
                 {'_id': default['slot']},
                 {'$set': {
@@ -64,6 +65,29 @@ async def get_force_subscriptions():
             enabled = bool(saved.get('enabled', default['enabled']))
         channels.append({**default, 'enabled': enabled})
     return channels
+
+
+async def remember_join_request(channel_id: int, user_id: int):
+    """Allow a verified join request to access files for the next 24 hours."""
+    pending_join_data.update_one(
+        {'_id': f'{channel_id}:{user_id}'},
+        {'$set': {
+            'channel_id': channel_id,
+            'user_id': user_id,
+            'expires_at': datetime.utcnow() + timedelta(hours=24),
+        }},
+        upsert=True,
+    )
+
+
+async def has_pending_join_request(channel_id: int, user_id: int):
+    record = pending_join_data.find_one({'_id': f'{channel_id}:{user_id}'})
+    if not record:
+        return False
+    if record.get('expires_at') and record['expires_at'] < datetime.utcnow():
+        pending_join_data.delete_one({'_id': record['_id']})
+        return False
+    return True
 
 
 async def get_or_create_force_subscribe_link(slot: int, create_link):
