@@ -5,8 +5,7 @@ import re
 import asyncio
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
-from config import ADMINS
-from database.database import get_force_subscriptions
+from database.database import get_force_subscriptions, has_pending_join_request
 from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
 from pyrogram.errors import FloodWait
 
@@ -24,13 +23,15 @@ async def is_subscribed(filter, client, update):
             continue
         try:
             member = await client.get_chat_member(channel["channel_id"], user_id)
+            if member.status in valid_statuses:
+                continue
         except UserNotParticipant:
-            return False
+            pass
         except Exception:
-            # If the bot cannot verify membership in a new private channel,
-            # do not allow file access.
-            return False
-        if member.status not in valid_statuses:
+            # Do not allow access unless there is a verified request record.
+            pass
+
+        if not await has_pending_join_request(channel["channel_id"], user_id):
             return False
     return True
 
