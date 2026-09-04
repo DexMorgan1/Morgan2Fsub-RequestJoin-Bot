@@ -13,9 +13,6 @@ from pyrogram.errors import FloodWait
 
 async def is_subscribed(filter, client, update):
     user_id = update.from_user.id
-    if user_id in ADMINS:
-        return True
-
     valid_statuses = {
         ChatMemberStatus.OWNER,
         ChatMemberStatus.ADMINISTRATOR,
