@@ -20,8 +20,7 @@ force_sub_data = database['force_sub_settings']
 
 
 async def present_user(user_id: int):
-    found = user_data.find_one({'_id': user_id})
-    return bool(found)
+    return bool(user_data.find_one({'_id': user_id}))
 
 
 async def add_user(user_id: int):
@@ -29,8 +28,7 @@ async def add_user(user_id: int):
 
 
 async def full_userbase():
-    user_docs = user_data.find()
-    return [doc['_id'] for doc in user_docs]
+    return [doc['_id'] for doc in user_data.find()]
 
 
 async def del_user(user_id: int):
@@ -45,11 +43,25 @@ def _default_force_subscriptions():
 
 
 async def get_force_subscriptions():
-    """Return both Force Subscribe slots and their persisted on/off state."""
+    """Return configured channels and reset a slot when its channel changes."""
     channels = []
     for default in _default_force_subscriptions():
         saved = force_sub_data.find_one({'_id': default['slot']})
-        enabled = default['enabled'] if saved is None else bool(saved.get('enabled'))
+        channel_changed = saved is not None and saved.get('channel_id') != default['channel_id']
+        if saved is None or channel_changed:
+            # A newly configured channel must use its environment on/off setting,
+            # not the old channel's saved state or old invite link.
+            force_sub_data.update_one(
+                {'_id': default['slot']},
+                {'$set': {
+                    'channel_id': default['channel_id'],
+                    'enabled': default['enabled'],
+                }, '$unset': {'invite_link': ''}},
+                upsert=True,
+            )
+            enabled = default['enabled']
+        else:
+            enabled = bool(saved.get('enabled', default['enabled']))
         channels.append({**default, 'enabled': enabled})
     return channels
 
