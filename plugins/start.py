@@ -9,7 +9,8 @@ from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL
 from helper_func import subscribed, decode, get_messages
 from database.database import (
     add_user, del_user, full_userbase, present_user,
-    get_force_subscriptions, toggle_force_subscription,
+    get_force_subscriptions, get_or_create_force_subscribe_link,
+    toggle_force_subscription,
 )
 
 
@@ -90,14 +91,19 @@ async def not_joined(client: Client, message: Message):
         if not channel['enabled'] or not channel['channel_id']:
             continue
         try:
-            invite = await client.create_chat_invite_link(
-                chat_id=channel['channel_id'],
-                creates_join_request=True,
-                name=f"force-subscribe-{channel['slot']}",
+            async def create_request_link():
+                return await client.create_chat_invite_link(
+                    chat_id=channel['channel_id'],
+                    creates_join_request=True,
+                    name=f"force-subscribe-{channel['slot']}",
+                )
+
+            invite_link = await get_or_create_force_subscribe_link(
+                channel['slot'], create_request_link,
             )
             join_buttons.append(InlineKeyboardButton(
                 text=f"Join Channel {channel['slot']}",
-                url=invite.invite_link,
+                url=invite_link,
             ))
         except Exception as error:
             client.LOGGER(__name__).warning("Unable to create request link: %s", error)
@@ -143,7 +149,7 @@ async def force_subscribe_settings(client: Client, message: Message):
     channels = await get_force_subscriptions()
     await message.reply_text(
         "<b>Force Subscribe Settings</b>\n\n"
-        "Tap a channel to turn it ON or OFF. When ON, its button creates a private "
+        "Tap a channel to turn it ON or OFF. When ON, its button uses one shared "
         "request-to-join link; users must be approved before receiving a file.",
         reply_markup=force_subscribe_keyboard(channels),
     )
