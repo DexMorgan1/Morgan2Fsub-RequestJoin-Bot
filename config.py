@@ -2,15 +2,17 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 
+
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 APP_ID = int(os.environ.get("APP_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "0"))
 OWNER = os.environ.get("OWNER", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
-PORT = os.environ.get("PORT", "8030")
+PORT = int(os.environ.get("PORT", "8030"))
 DB_URI = os.environ.get("DATABASE_URL", "")
 DB_NAME = os.environ.get("DATABASE_NAME", "Morgan2FsubRequestJoin")
+
 
 # Force Subscribe channel IDs. Use 0 to leave a slot unused.
 FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "0"))
@@ -19,13 +21,15 @@ FORCE_SUB_CHANNEL_ENABLED = os.environ.get("FORCE_SUB_CHANNEL_ENABLED", "True").
 FORCE_SUB_CHANNEL2_ENABLED = os.environ.get("FORCE_SUB_CHANNEL2_ENABLED", "True").lower() == "true"
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "4"))
 
-START_MSG = os.environ.get("START_MESSAGE", "<b>Hello Pirate!! {first}\n\n ɪ Store files for iBOX TV and users can access them through clicking special buttons. </b>")
-FORCE_MSG = os.environ.get("FORCE_SUB_MESSAGE", "ʜᴇʟʟᴏ {first}\n\n<b>ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟ using any button below ᴀɴᴅ ᴛʜᴇɴ ᴄʟɪᴄᴋ ᴏɴ ʀᴇʟᴏᴀᴅ button ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ʀᴇǫᴜᴇꜱᴛᴇᴅ ꜰɪʟᴇ.</b>")
+
+START_MSG = os.environ.get("START_MESSAGE", "<b>Hello {first} 🏮\n\nWelcome to SeriesAchiever. Send a file link to access your files.</b>")
+FORCE_MSG = os.environ.get("FORCE_SUB_MESSAGE", "<b>Hello {first} 🏮</b>\nYou must first become a member of our channels")
 CUSTOM_CAPTION = os.environ.get("CUSTOM_CAPTION", None)
 PROTECT_CONTENT = os.environ.get("PROTECT_CONTENT", "False") == "True"
 DISABLE_CHANNEL_BUTTON = os.environ.get("DISABLE_CHANNEL_BUTTON", "False") == "True"
 BOT_STATS_TEXT = "<b>BOT UPTIME</b>\n{uptime}"
-USER_REPLY_TEXT = "Pirate ! ʏᴏᴜ Need to be myy Owner to do that !!"
+USER_REPLY_TEXT = "You need to be a SeriesAchiever bot administrator to do that."
+
 
 try:
     ADMINS = [int(x) for x in os.environ.get("ADMINS", "").split()]
@@ -34,6 +38,7 @@ try:
     ADMINS = list(set(ADMINS))
 except ValueError as error:
     raise ValueError("ADMINS must be a space-separated list of Telegram numeric IDs.") from error
+
 
 LOG_FILE_NAME = "filesharingbot.txt"
 logging.basicConfig(
