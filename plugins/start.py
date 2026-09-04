@@ -23,7 +23,7 @@ async def start_command(client: Client, message: Message):
             pass
 
     if len(message.text) <= 7:
-        reply_markup = InlineKeyboardMarkup([[ 
+        reply_markup = InlineKeyboardMarkup([[
             InlineKeyboardButton("⚡️ ᴀʙᴏᴜᴛ", callback_data="about"),
             InlineKeyboardButton("🍁 ᴘʀᴇᴍɪᴜᴍ", url="https://t.me/SeriesAchievers"),
         ]])
@@ -85,6 +85,7 @@ async def start_command(client: Client, message: Message):
 @Bot.on_message(filters.command('start') & filters.private)
 async def not_joined(client: Client, message: Message):
     buttons = []
+    join_buttons = []
     for channel in await get_force_subscriptions():
         if not channel['enabled'] or not channel['channel_id']:
             continue
@@ -94,12 +95,15 @@ async def not_joined(client: Client, message: Message):
                 creates_join_request=True,
                 name=f"force-subscribe-{channel['slot']}",
             )
-            buttons.append([InlineKeyboardButton(
+            join_buttons.append(InlineKeyboardButton(
                 text=f"Join Channel {channel['slot']}",
                 url=invite.invite_link,
-            )])
+            ))
         except Exception as error:
             client.LOGGER(__name__).warning("Unable to create request link: %s", error)
+
+    if join_buttons:
+        buttons.append(join_buttons)
 
     try:
         buttons.append([InlineKeyboardButton(
