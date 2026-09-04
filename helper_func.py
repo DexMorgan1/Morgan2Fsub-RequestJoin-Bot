@@ -5,7 +5,10 @@ import re
 import asyncio
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
-from database.database import get_force_subscriptions, has_pending_join_request
+from bot import Bot
+from database.database import (
+    get_force_subscriptions, has_pending_join_request, remember_join_request,
+)
 from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
 from pyrogram.errors import FloodWait
 
@@ -105,3 +108,15 @@ def get_readable_time(seconds: int) -> str:
 
 
 subscribed = filters.create(is_subscribed)
+
+
+@Bot.on_chat_join_request()
+async def record_verified_join_request(client: Bot, join_request):
+    """Record a request only for an active Force Subscribe channel."""
+    active_channels = {
+        channel['channel_id']
+        for channel in await get_force_subscriptions()
+        if channel['enabled'] and channel['channel_id']
+    }
+    if join_request.chat.id in active_channels:
+        await remember_join_request(join_request.chat.id, join_request.from_user.id)
