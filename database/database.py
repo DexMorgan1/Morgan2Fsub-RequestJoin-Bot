@@ -54,6 +54,22 @@ async def get_force_subscriptions():
     return channels
 
 
+async def get_or_create_force_subscribe_link(slot: int, create_link):
+    """Reuse one request-to-join link for each channel slot."""
+    saved = force_sub_data.find_one({'_id': slot}) or {}
+    invite_link = saved.get('invite_link')
+    if invite_link:
+        return invite_link
+
+    invite = await create_link()
+    force_sub_data.update_one(
+        {'_id': slot},
+        {'$set': {'invite_link': invite.invite_link}},
+        upsert=True,
+    )
+    return invite.invite_link
+
+
 async def toggle_force_subscription(slot: int):
     """Flip one Force Subscribe slot and return its new state."""
     channels = await get_force_subscriptions()
