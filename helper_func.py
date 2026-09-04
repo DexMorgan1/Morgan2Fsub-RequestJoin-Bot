@@ -29,9 +29,11 @@ async def is_subscribed(filter, client, update):
             member = await client.get_chat_member(channel["channel_id"], user_id)
         except UserNotParticipant:
             return False
+        except Exception:
+            # If the bot cannot verify membership in a new private channel,
+            # do not allow file access.
+            return False
         if member.status not in valid_statuses:
-            # A pending join request is deliberately not membership. The channel
-            # owner must approve it before the user can receive the file.
             return False
     return True
 
@@ -39,36 +41,27 @@ async def is_subscribed(filter, client, update):
 async def encode(string):
     string_bytes = string.encode("ascii")
     base64_bytes = base64.urlsafe_b64encode(string_bytes)
-    base64_string = (base64_bytes.decode("ascii")).strip("=")
-    return base64_string
+    return (base64_bytes.decode("ascii")).strip("=")
 
 
 async def decode(base64_string):
-    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
+    base64_string = base64_string.strip("=")
     base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
-    string_bytes = base64.urlsafe_b64decode(base64_bytes)
-    string = string_bytes.decode("ascii")
-    return string
+    return base64.urlsafe_b64decode(base64_bytes).decode("ascii")
 
 
 async def get_messages(client, message_ids):
     messages = []
     total_messages = 0
     while total_messages != len(message_ids):
-        temb_ids = message_ids[total_messages:total_messages+200]
+        temb_ids = message_ids[total_messages:total_messages + 200]
         try:
-            msgs = await client.get_messages(
-                chat_id=client.db_channel.id,
-                message_ids=temb_ids
-            )
-        except FloodWait as e:
-            await asyncio.sleep(e.x)
-            msgs = await client.get_messages(
-                chat_id=client.db_channel.id,
-                message_ids=temb_ids
-            )
-        except:
-            pass
+            msgs = await client.get_messages(chat_id=client.db_channel.id, message_ids=temb_ids)
+        except FloodWait as error:
+            await asyncio.sleep(error.x)
+            msgs = await client.get_messages(chat_id=client.db_channel.id, message_ids=temb_ids)
+        except Exception:
+            msgs = []
         total_messages += len(temb_ids)
         messages.extend(msgs)
     return messages
@@ -76,27 +69,21 @@ async def get_messages(client, message_ids):
 
 async def get_message_id(client, message):
     if message.forward_from_chat:
-        if message.forward_from_chat.id == client.db_channel.id:
-            return message.forward_from_message_id
-        else:
-            return 0
-    elif message.forward_sender_name:
+        return message.forward_from_message_id if message.forward_from_chat.id == client.db_channel.id else 0
+    if message.forward_sender_name:
         return 0
-    elif message.text:
+    if message.text:
         pattern = "https://t.me/(?:c/)?(.*)/(\d+)"
-        matches = re.match(pattern,message.text)
+        matches = re.match(pattern, message.text)
         if not matches:
             return 0
         channel_id = matches.group(1)
         msg_id = int(matches.group(2))
-        if channel_id.isdigit():
-            if f"-100{channel_id}" == str(client.db_channel.id):
-                return msg_id
-        else:
-            if channel_id == client.db_channel.username:
-                return msg_id
-    else:
-        return 0
+        if channel_id.isdigit() and f"-100{channel_id}" == str(client.db_channel.id):
+            return msg_id
+        if not channel_id.isdigit() and channel_id == client.db_channel.username:
+            return msg_id
+    return 0
 
 
 def get_readable_time(seconds: int) -> str:
@@ -111,14 +98,12 @@ def get_readable_time(seconds: int) -> str:
             break
         time_list.append(int(result))
         seconds = int(remainder)
-    hmm = len(time_list)
-    for x in range(hmm):
-        time_list[x] = str(time_list[x]) + time_suffix_list[x]
+    for index in range(len(time_list)):
+        time_list[index] = str(time_list[index]) + time_suffix_list[index]
     if len(time_list) == 4:
         up_time += f"{time_list.pop()}, "
     time_list.reverse()
-    up_time += ":".join(time_list)
-    return up_time
+    return up_time + ":".join(time_list)
 
 
 subscribed = filters.create(is_subscribed)
