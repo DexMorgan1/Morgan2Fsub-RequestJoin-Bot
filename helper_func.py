@@ -1,16 +1,23 @@
 #(©)CodeFlix_Bots
 
+import asyncio
 import base64
 import re
-import asyncio
+
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
-from bot import Bot
-from database.database import (
-    get_force_subscriptions, has_pending_join_request, remember_join_request,
-)
-from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
+from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.errors import FloodWait
+from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
+
+from bot import Bot
+from config import CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from database.database import (
+    clear_pending_file_request,
+    get_force_subscriptions,
+    get_pending_file_request,
+    has_pending_join_request,
+    remember_join_request,
+)
 
 
 async def is_subscribed(filter, client, update):
@@ -31,7 +38,6 @@ async def is_subscribed(filter, client, update):
         except UserNotParticipant:
             pass
         except Exception:
-            # Do not allow access unless there is a verified request record.
             pass
 
         if not await has_pending_join_request(channel["channel_id"], user_id):
@@ -107,16 +113,76 @@ def get_readable_time(seconds: int) -> str:
     return up_time + ":".join(time_list)
 
 
+async def deliver_pending_file(client: Bot, user_id: int):
+    """Send the file saved when this user first opened its deep link."""
+    payload = await get_pending_file_request(user_id)
+    if not payload:
+        return
+
+    try:
+        argument = (await decode(payload)).split("-")
+        if len(argument) == 3:
+            start = int(int(argument[1]) / abs(client.db_channel.id))
+            end = int(int(argument[2]) / abs(client.db_channel.id))
+            ids = range(start, end + 1) if start <= end else range(start, end - 1, -1)
+        elif len(argument) == 2:
+            ids = [int(int(argument[1]) / abs(client.db_channel.id))]
+        else:
+            return
+        messages = await get_messages(client, ids)
+    except Exception as error:
+        client.LOGGER(__name__).warning("Unable to prepare pending file: %s", error)
+        return
+
+    sent = False
+    for msg in messages:
+        if not msg:
+            continue
+        caption = "" if not msg.caption else msg.caption.html
+        if CUSTOM_CAPTION and msg.document:
+            caption = CUSTOM_CAPTION.format(previouscaption=caption, filename=msg.document.file_name)
+        reply_markup = msg.reply_markup if DISABLE_CHANNEL_BUTTON else None
+        try:
+            await msg.copy(
+                chat_id=user_id,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                protect_content=PROTECT_CONTENT,
+            )
+            sent = True
+            await asyncio.sleep(0.5)
+        except FloodWait as error:
+            await asyncio.sleep(error.x)
+            await msg.copy(
+                chat_id=user_id,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                protect_content=PROTECT_CONTENT,
+            )
+            sent = True
+        except Exception as error:
+            client.LOGGER(__name__).warning("Unable to deliver pending file: %s", error)
+
+    if sent:
+        await clear_pending_file_request(user_id)
+
+
 subscribed = filters.create(is_subscribed)
 
 
 @Bot.on_chat_join_request()
 async def record_verified_join_request(client: Bot, join_request):
-    """Record a request only for an active Force Subscribe channel."""
+    """Record requests and deliver once every enabled channel is satisfied."""
     active_channels = {
         channel['channel_id']
         for channel in await get_force_subscriptions()
         if channel['enabled'] and channel['channel_id']
     }
-    if join_request.chat.id in active_channels:
-        await remember_join_request(join_request.chat.id, join_request.from_user.id)
+    if join_request.chat.id not in active_channels:
+        return
+
+    user_id = join_request.from_user.id
+    await remember_join_request(join_request.chat.id, user_id)
+    if await is_subscribed(None, client, join_request):
+        await deliver_pending_file(client, user_id)
