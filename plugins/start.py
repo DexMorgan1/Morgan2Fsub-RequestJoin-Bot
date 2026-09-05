@@ -10,7 +10,7 @@ from helper_func import subscribed, decode, get_messages
 from database.database import (
     add_user, del_user, full_userbase, present_user,
     get_force_subscriptions, get_or_create_force_subscribe_link,
-    toggle_force_subscription,
+    save_pending_file_request, toggle_force_subscription,
 )
 
 
@@ -85,6 +85,11 @@ async def start_command(client: Client, message: Message):
 
 @Bot.on_message(filters.command('start') & filters.private)
 async def not_joined(client: Client, message: Message):
+    try:
+        await save_pending_file_request(message.from_user.id, message.command[1])
+    except (IndexError, AttributeError):
+        pass
+
     buttons = []
     join_buttons = []
     for channel in await get_force_subscriptions():
@@ -148,9 +153,11 @@ def force_subscribe_keyboard(channels):
 async def force_subscribe_settings(client: Client, message: Message):
     channels = await get_force_subscriptions()
     await message.reply_text(
-        "<b>Force Subscribe Settings</b>\n\n"
+        "<b>Force Subscribe Settings</b>
+
+"
         "Tap a channel to turn it ON or OFF. When ON, its button uses one shared "
-        "request-to-join link; users must be approved before receiving a file.",
+        "request-to-join link; users can receive their pending file immediately after requesting.",
         reply_markup=force_subscribe_keyboard(channels),
     )
 
