@@ -153,11 +153,11 @@ def force_subscribe_keyboard(channels):
 async def force_subscribe_settings(client: Client, message: Message):
     channels = await get_force_subscriptions()
     await message.reply_text(
-        "<b>Force Subscribe Settings</b>
+                """<b>Force Subscribe SettingsForce Subscribe Settings</b>
 
 "
         "Tap a channel to turn it ON or OFF. When ON, its button uses one shared "
-        "request-to-join link; users can receive their pending file immediately after requesting.",
+        "request-to-join link; users can receive their pending file immediately after requesting.""",
         reply_markup=force_subscribe_keyboard(channels),
     )
 
