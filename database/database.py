@@ -20,6 +20,7 @@ database = dbclient[DB_NAME]
 user_data = database['users']
 force_sub_data = database['force_sub_settings']
 pending_join_data = database['pending_join_requests']
+pending_file_data = database['pending_file_requests']
 
 
 async def present_user(user_id: int):
@@ -88,6 +89,24 @@ async def has_pending_join_request(channel_id: int, user_id: int):
         pending_join_data.delete_one({'_id': record['_id']})
         return False
     return True
+
+
+async def save_pending_file_request(user_id: int, payload: str):
+    """Remember the most recent file link a user tried to open."""
+    pending_file_data.update_one(
+        {'_id': user_id},
+        {'$set': {'payload': payload, 'created_at': datetime.utcnow()}},
+        upsert=True,
+    )
+
+
+async def get_pending_file_request(user_id: int):
+    record = pending_file_data.find_one({'_id': user_id})
+    return record.get('payload') if record else None
+
+
+async def clear_pending_file_request(user_id: int):
+    pending_file_data.delete_one({'_id': user_id})
 
 
 async def get_or_create_force_subscribe_link(slot: int, create_link):
