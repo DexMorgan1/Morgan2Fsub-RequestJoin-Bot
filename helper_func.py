@@ -184,5 +184,5 @@ async def record_verified_join_request(client: Bot, join_request):
 
     user_id = join_request.from_user.id
     await remember_join_request(join_request.chat.id, user_id)
-    if True:
+    if await is_subscribed(None, client, join_request):
         await deliver_pending_file(client, user_id)
