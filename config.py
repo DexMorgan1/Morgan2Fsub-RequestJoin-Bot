@@ -11,12 +11,9 @@ OWNER = os.environ.get("OWNER", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
 PORT = int(os.environ.get("PORT", "8030"))
 DB_URI = os.environ.get("DATABASE_URL", "")
-DB_NAME = os.environ.get("DATABASE_NAME", "Morgan2FsubRequestJoin")
-
-
-# Force Subscribe channel IDs. Use 0 to leave a slot unused.
-FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "0"))
-FORCE_SUB_CHANNEL2 = int(os.environ.get("FORCE_SUB_CHANNEL2", "0"))
+DB_NAME = os.environ.get("DATABASE_NAME", "Morgan2FsubRequestJoin")# Force Subscribe test channels
+FORCE_SUB_CHANNEL = -1004360359620
+FORCE_SUB_CHANNEL2 = -1004425796780
 FORCE_SUB_CHANNEL_ENABLED = os.environ.get("FORCE_SUB_CHANNEL_ENABLED", "True").lower() == "true"
 FORCE_SUB_CHANNEL2_ENABLED = os.environ.get("FORCE_SUB_CHANNEL2_ENABLED", "True").lower() == "true"
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "4"))
