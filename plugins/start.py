@@ -5,7 +5,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from config import (ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON,\n                    PROTECT_CONTENT, DUMMY_BUTTON_LINK, DUMMY_BUTTON_TEXT)
 from helper_func import subscribed, decode, get_messages
 from database.database import (
     add_user, del_user, full_userbase, present_user,
@@ -99,8 +99,7 @@ async def not_joined(client: Client, message: Message):
             async def create_request_link():
                 return await client.create_chat_invite_link(
                     chat_id=channel['channel_id'],
-                    creates_join_request=True,
-                    name=f"force-subscribe-{channel['slot']}",
+                        name=f"force-subscribe-{channel['slot']}",
                 )
 
             invite_link = await get_or_create_force_subscribe_link(
@@ -113,6 +112,9 @@ async def not_joined(client: Client, message: Message):
         except Exception as error:
             client.LOGGER(__name__).warning("Unable to create request link: %s", error)
 
+    # This second button is a configurable URL only; it is never checked.
+    if DUMMY_BUTTON_LINK:
+        join_buttons.append(InlineKeyboardButton(text=DUMMY_BUTTON_TEXT, url=DUMMY_BUTTON_LINK))
     if join_buttons:
         buttons.append(join_buttons)
 
@@ -162,7 +164,7 @@ async def force_subscribe_settings(client: Client, message: Message):
     )
 
 
-@Bot.on_callback_query(filters.regex(r"^fsub:toggle:(1|2)$") & filters.user(ADMINS))
+@Bot.on_callback_query(filters.regex(r"^fsub:toggle:(1)$") & filters.user(ADMINS))
 async def toggle_force_subscribe_setting(client: Client, query: CallbackQuery):
     slot = int(query.data.rsplit(":", 1)[1])
     enabled = await toggle_force_subscription(slot)
