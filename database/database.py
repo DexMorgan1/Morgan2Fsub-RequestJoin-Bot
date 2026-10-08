@@ -7,9 +7,7 @@ from config import (
     DB_URI,
     DB_NAME,
     FORCE_SUB_CHANNEL,
-    FORCE_SUB_CHANNEL2,
     FORCE_SUB_CHANNEL_ENABLED,
-    FORCE_SUB_CHANNEL2_ENABLED,
 )
 
 
@@ -40,10 +38,8 @@ async def del_user(user_id: int):
 
 
 def _default_force_subscriptions():
-    return [
-        {'slot': 1, 'channel_id': FORCE_SUB_CHANNEL, 'enabled': FORCE_SUB_CHANNEL_ENABLED},
-        {'slot': 2, 'channel_id': FORCE_SUB_CHANNEL2, 'enabled': FORCE_SUB_CHANNEL2_ENABLED},
-    ]
+    # Only Channel 1 is force-subscription. Channel 2 is the dummy URL button.
+    return [{'slot': 1, 'channel_id': FORCE_SUB_CHANNEL, 'enabled': FORCE_SUB_CHANNEL_ENABLED}]
 
 
 async def get_force_subscriptions():
