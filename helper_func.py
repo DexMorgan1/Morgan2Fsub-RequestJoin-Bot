@@ -21,6 +21,7 @@ from database.database import (
 
 
 async def is_subscribed(filter, client, update):
+    """Check membership in Channel 1 only; the dummy URL is never examined."""
     user_id = update.from_user.id
     valid_statuses = {
         ChatMemberStatus.OWNER,
@@ -37,13 +38,10 @@ async def is_subscribed(filter, client, update):
                 continue
         except UserNotParticipant:
             pass
-        except Exception:
-            pass
-
-        if not await has_pending_join_request(channel["channel_id"], user_id):
-            return False
+        except Exception as error:
+            client.LOGGER(__name__).warning("Channel 1 membership check failed: %s", error)
+        return False
     return True
-
 
 async def encode(string):
     string_bytes = string.encode("ascii")
