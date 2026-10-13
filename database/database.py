@@ -1,13 +1,18 @@
 #(©)CodeXBotz
 
+import asyncio
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 import pymongo
+from pymongo import ReturnDocument
 from config import (
     DB_URI,
     DB_NAME,
     FORCE_SUB_CHANNEL,
     FORCE_SUB_CHANNEL_ENABLED,
+    FORCE_SUB_CHANNEL2,
+    FORCE_SUB_CHANNEL2_ENABLED,
 )
 
 
@@ -38,8 +43,10 @@ async def del_user(user_id: int):
 
 
 def _default_force_subscriptions():
-    # Only Channel 1 is force-subscription. Channel 2 is the dummy URL button.
-    return [{'slot': 1, 'channel_id': FORCE_SUB_CHANNEL, 'enabled': FORCE_SUB_CHANNEL_ENABLED}]
+    return [
+        {'slot': 1, 'channel_id': FORCE_SUB_CHANNEL, 'enabled': FORCE_SUB_CHANNEL_ENABLED},
+        {'slot': 2, 'channel_id': FORCE_SUB_CHANNEL2, 'enabled': FORCE_SUB_CHANNEL2_ENABLED},
+    ]
 
 
 async def get_force_subscriptions():
@@ -48,13 +55,14 @@ async def get_force_subscriptions():
     for default in _default_force_subscriptions():
         saved = force_sub_data.find_one({'_id': default['slot']})
         channel_changed = saved is not None and saved.get('channel_id') != default['channel_id']
-        if saved is None or channel_changed:
+        link_mode_changed = saved is not None and saved.get('invite_mode') != 'request_to_join'
+        if saved is None or channel_changed or link_mode_changed:
             force_sub_data.update_one(
                 {'_id': default['slot']},
                 {'$set': {
                     'channel_id': default['channel_id'],
                     'enabled': default['enabled'],
-                }, '$unset': {'invite_link': ''}},
+                }, '$unset': {'invite_link': '', 'creation_token': '', 'creation_lock_until': ''}},
                 upsert=True,
             )
             enabled = default['enabled']
@@ -106,19 +114,61 @@ async def clear_pending_file_request(user_id: int):
 
 
 async def get_or_create_force_subscribe_link(slot: int, create_link):
-    """Reuse one request-to-join link for each channel slot."""
-    saved = force_sub_data.find_one({'_id': slot}) or {}
-    invite_link = saved.get('invite_link')
-    if invite_link:
-        return invite_link
+    """Reuse exactly one request-to-join link per configured channel."""
+    while True:
+        saved = force_sub_data.find_one({'_id': slot}) or {}
+        invite_link = saved.get('invite_link')
+        if invite_link and saved.get('invite_mode') == 'request_to_join':
+            return invite_link
 
-    invite = await create_link()
-    force_sub_data.update_one(
-        {'_id': slot},
-        {'$set': {'invite_link': invite.invite_link}},
-        upsert=True,
-    )
-    return invite.invite_link
+        now = datetime.utcnow()
+        token = uuid4().hex
+        claimed = force_sub_data.find_one_and_update(
+            {
+                '_id': slot,
+                '$and': [
+                    {'$or': [
+                        {'invite_link': {'$exists': False}},
+                        {'invite_link': None},
+                    ]},
+                    {'$or': [
+                        {'creation_lock_until': {'$exists': False}},
+                        {'creation_lock_until': {'$lt': now}},
+                    ]},
+                ],
+            },
+            {'$set': {
+                'creation_token': token,
+                'creation_lock_until': now + timedelta(minutes=2),
+            }},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not claimed:
+            await asyncio.sleep(0.25)
+            continue
+
+        try:
+            invite = await create_link()
+        except Exception:
+            force_sub_data.update_one(
+                {'_id': slot, 'creation_token': token},
+                {'$unset': {'creation_token': '', 'creation_lock_until': ''}},
+            )
+            raise
+
+        saved = force_sub_data.update_one(
+            {'_id': slot, 'creation_token': token},
+            {
+                '$set': {
+                    'invite_link': invite.invite_link,
+                    'invite_mode': 'request_to_join',
+                    'created_at': datetime.utcnow(),
+                },
+                '$unset': {'creation_token': '', 'creation_lock_until': ''},
+            },
+        )
+        if saved.modified_count:
+            return invite.invite_link
 
 
 async def toggle_force_subscription(slot: int):
