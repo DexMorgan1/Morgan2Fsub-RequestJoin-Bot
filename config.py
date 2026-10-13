@@ -13,12 +13,12 @@ PORT = int(os.environ.get("PORT", "8030"))
 DB_URI = os.environ.get("DATABASE_URL", "")
 DB_NAME = os.environ.get("DATABASE_NAME", "Morgan2FsubRequestJoin")
 
-# Force-subscribe channel IDs are managed in Railway variables.
-FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "0"))
+# Two force-subscribe channel IDs, managed in Railway variables.
+FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", os.environ.get("FORCE_SUB_CHANNEL_1", "0")))
+FORCE_SUB_CHANNEL2 = int(os.environ.get("FORCE_SUB_CHANNEL2", os.environ.get("FORCE_SUB_CHANNEL_2", "0")))
 FORCE_SUB_CHANNEL_ENABLED = os.environ.get("FORCE_SUB_CHANNEL_ENABLED", "True").lower() == "true"
-# Channel 2 is an independent URL only. It is never membership-checked.
-DUMMY_BUTTON_LINK = os.environ.get("DUMMY_BUTTON_LINK", "").strip()
-DUMMY_BUTTON_TEXT = os.environ.get("DUMMY_BUTTON_TEXT", "🔗 Join Channel 2")
+FORCE_SUB_CHANNEL2_ENABLED = os.environ.get("FORCE_SUB_CHANNEL2_ENABLED", "True").lower() == "true"
+AUTO_APPROVE_JOIN_REQUESTS = os.environ.get("AUTO_APPROVE_JOIN_REQUESTS", "True").lower() == "true"
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "4"))
 
 
