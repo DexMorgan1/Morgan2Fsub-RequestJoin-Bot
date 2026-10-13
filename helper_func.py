@@ -10,7 +10,7 @@ from pyrogram.errors import FloodWait
 from pyrogram.errors.exceptions.bad_request_400 import UserNotParticipant
 
 from bot import Bot
-from config import CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
+from config import AUTO_APPROVE_JOIN_REQUESTS, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT
 from database.database import (
     clear_pending_file_request,
     get_force_subscriptions,
@@ -21,7 +21,7 @@ from database.database import (
 
 
 async def is_subscribed(filter, client, update):
-    """Check membership in Channel 1 only; the dummy URL is never examined."""
+    """Check membership in every enabled force-subscribe channel."""
     user_id = update.from_user.id
     valid_statuses = {
         ChatMemberStatus.OWNER,
@@ -39,7 +39,7 @@ async def is_subscribed(filter, client, update):
         except UserNotParticipant:
             pass
         except Exception as error:
-            client.LOGGER(__name__).warning("Channel 1 membership check failed: %s", error)
+            client.LOGGER(__name__).warning("Channel %s membership check failed: %s", channel['slot'], error)
         return False
     return True
 
@@ -182,5 +182,12 @@ async def record_verified_join_request(client: Bot, join_request):
 
     user_id = join_request.from_user.id
     await remember_join_request(join_request.chat.id, user_id)
+    if AUTO_APPROVE_JOIN_REQUESTS:
+        try:
+            await client.approve_chat_join_request(join_request.chat.id, user_id)
+            await asyncio.sleep(1)
+        except Exception as error:
+            client.LOGGER(__name__).warning("Could not approve join request: %s", error)
+            return
     if await is_subscribed(None, client, join_request):
         await deliver_pending_file(client, user_id)
