@@ -115,7 +115,7 @@ async def not_joined(client: Client, message: Message):
             client.LOGGER(__name__).warning("Unable to create request link: %s", error)
 
     if join_buttons:
-        buttons.extend([[button] for button in join_buttons])
+        buttons.append(join_buttons)
 
     try:
         buttons.append([InlineKeyboardButton(
