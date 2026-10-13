@@ -3,15 +3,15 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 
-TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-APP_ID = int(os.environ.get("APP_ID", "0"))
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", os.environ.get("BOT_TOKEN", ""))
+APP_ID = int(os.environ.get("APP_ID", os.environ.get("API_ID", "0")))
 API_HASH = os.environ.get("API_HASH", "")
 CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "0"))
 OWNER = os.environ.get("OWNER", "")
 OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
 PORT = int(os.environ.get("PORT", "8030"))
-DB_URI = os.environ.get("DATABASE_URL", "")
-DB_NAME = os.environ.get("DATABASE_NAME", "Morgan2FsubRequestJoin")
+DB_URI = os.environ.get("DATABASE_URL", os.environ.get("MONGODB_URI", ""))
+DB_NAME = os.environ.get("DATABASE_NAME", os.environ.get("MONGODB_DB", "Morgan2FsubRequestJoin"))
 
 # Two force-subscribe channel IDs, managed in Railway variables.
 FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", os.environ.get("FORCE_SUB_CHANNEL_1", "0")))
