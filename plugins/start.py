@@ -6,7 +6,7 @@ from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 
 from bot import Bot
 from config import (ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON,
-                    PROTECT_CONTENT, DUMMY_BUTTON_LINK, DUMMY_BUTTON_TEXT)
+                    PROTECT_CONTENT)
 from helper_func import subscribed, decode, get_messages
 from database.database import (
     add_user, del_user, full_userbase, present_user,
@@ -100,7 +100,8 @@ async def not_joined(client: Client, message: Message):
             async def create_request_link():
                 return await client.create_chat_invite_link(
                     chat_id=channel['channel_id'],
-                        name=f"force-subscribe-{channel['slot']}",
+                    name=f"force-subscribe-{channel['slot']}",
+                    creates_join_request=True,
                 )
 
             invite_link = await get_or_create_force_subscribe_link(
@@ -113,11 +114,8 @@ async def not_joined(client: Client, message: Message):
         except Exception as error:
             client.LOGGER(__name__).warning("Unable to create request link: %s", error)
 
-    # This second button is a configurable URL only; it is never checked.
-    if DUMMY_BUTTON_LINK:
-        join_buttons.append(InlineKeyboardButton(text=DUMMY_BUTTON_TEXT, url=DUMMY_BUTTON_LINK))
     if join_buttons:
-        buttons.append(join_buttons)
+        buttons.extend([[button] for button in join_buttons])
 
     try:
         buttons.append([InlineKeyboardButton(
@@ -158,13 +156,12 @@ async def force_subscribe_settings(client: Client, message: Message):
     await message.reply_text(
                 """<b>Force Subscribe Settings</b>
 
-Tap Channel 1 to turn force-subscription ON or OFF.
-Channel 2 is a separate Railway-configured URL and is never used for access control.""",
+Tap a channel to turn its force-subscription check ON or OFF.""",
         reply_markup=force_subscribe_keyboard(channels),
     )
 
 
-@Bot.on_callback_query(filters.regex(r"^fsub:toggle:(1)$") & filters.user(ADMINS))
+@Bot.on_callback_query(filters.regex(r"^fsub:toggle:(1|2)$") & filters.user(ADMINS))
 async def toggle_force_subscribe_setting(client: Client, query: CallbackQuery):
     slot = int(query.data.rsplit(":", 1)[1])
     enabled = await toggle_force_subscription(slot)
