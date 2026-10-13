@@ -2,12 +2,15 @@ from aiohttp import web
 from plugins import web_server
 
 import pyromod.listen
-from pyrogram import Client
+from pyrogram import Client, utils
 from pyrogram.enums import ParseMode
 import sys
 from datetime import datetime
 
 from config import API_HASH, APP_ID, LOGGER, TG_BOT_TOKEN, TG_BOT_WORKERS, CHANNEL_ID, PORT
+
+# Pyrogram's old default range rejects newer Telegram channel IDs.
+utils.MIN_CHANNEL_ID = -100999999999999
 
 
 class Bot(Client):
